@@ -1,10 +1,37 @@
 #!/bin/bash
 
 function HELP(){
-	echo "usage: $(basename ${0}) <recipe> <work dir>" 
+	echo "usage: $(basename ${0}) <recipe name> <rdk build dir> <setup script path>" 
+	echo ""
+
+	printf "%-20s : %-30s %-30s\n" "<recipe name>" "recipe name" "(e.g. ccsp-wifi-agent)"
+	printf "%-20s : %-30s %-30s\n" "<rdk build dir>" "build directory path" "(e.g. \${codebase}/build-mt6890)"
+	printf "%-20s : %-30s %-30s\n" "<setup script path>" "setup-environment shell script" "(e.g. \${codebase}/meta-rdk/setup-environment)"
 }
 
 # << functions >>
+
+function get_build_name(){
+	local path=$1
+	
+	echo "${path}" | awk -F"/" \
+	'
+	{ 
+		print $(NF)
+	}
+	'
+}
+
+function get_codebase_name(){
+	local path=$1
+	
+	echo "${path}" | awk -F"/" \
+	'
+	{ 
+		print $(NF-1)
+	}
+	'
+}
 
 function get_bb_path(){
 
@@ -130,7 +157,7 @@ function generate_finalized_recipe(){
 # << main >>
 
 # argument check
-if [[ $# != 2 ]];then 
+if [[ $# != 3 ]];then 
 	HELP
 	exit 1
 fi
@@ -138,8 +165,11 @@ fi
 # assign value
 recipe_name=${1}
 work_dir=${2}
+setup_environment_path=${3}
 ori_dir=$(pwd)
-output_dir="$(pwd)/recipe_tracking/${recipe_name}"
+codebase_name=$(get_codebase_name ${work_dir})
+build_name=$(get_build_name ${work_dir})
+output_dir="$(pwd)/recipe_tracking/${codebase_name}_${build_name}_${recipe_name}"
 
 # create folder
 if [[ -d ${output_dir} ]]; then
@@ -158,7 +188,7 @@ mkdir -p ${output_dir}
 cd $(dirname ${work_dir})
 
 # setup oe environment
-source meta-rdk/setup-environment $(basename ${work_dir})
+source ${setup_environment_path} ${build_name}
 
 # 
 bb_path=$(get_bb_path)
@@ -166,6 +196,8 @@ bbappend_path=$(get_bbappend_paths)
 
 # 
 paths="${bb_path[@]} ${bbappend_path[@]}"
+
+echo "paths: ${paths[@]}"
 
 {
 generate_recipe_list ${paths}
