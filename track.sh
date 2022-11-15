@@ -120,6 +120,7 @@ function get_layer_name(){
 function generate_recipe_list(){
 
 	local paths="$@"
+	local recipe_name
 	
 	printf "%s,%s,%s,%s\n" "No." "Layer Name" "Recipe Name" "Full Path"
 
@@ -200,9 +201,9 @@ paths="${bb_path[@]} ${bbappend_path[@]}"
 echo "paths: ${paths[@]}"
 
 {
-generate_recipe_list ${paths}
+	generate_recipe_list ${paths}
 } > "${output_dir}/${recipe_name}_recipe_list.csv"
 
 {
 	generate_finalized_recipe ${paths}
-} > "${output_dir}/${recipe_name}_finalized.txt"
+} > "${output_dir}/${recipe_name}_bbsum.txt"
