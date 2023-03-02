@@ -104,7 +104,7 @@ function get_bbappend_paths(){
 		if ( match($0, regex) ){
 			split($0, arr, ".")
 			_package_name = arr[1]
-			if ( _package_name == package_name ){
+			if ( _package_name ~ "^"package_name ){
 				flag_match = 1
 				NR_match = NR
 			} else {
