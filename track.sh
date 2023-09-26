@@ -171,12 +171,23 @@ function generate_finalized_recipe(){
 	do
 		layer_name=$(get_layer_name $path)
 		package_name=${path##*/}
-		
-		printf "====== %s / %s ======\n" "${layer_name}" "${package_name}"
-		printf "====== %s ===== \n" "${path}"
-		printf "\n"
+
+        printf "==========================================================\n"
+        printf "Layer  : %s \n" "${layer_name}"
+        printf "Recipe : %s \n" "${package_name}"
+		printf "Path   : %s \n" "${path}"
+        printf "==========================================================\n\n"
 
 		cat ${path}
+
+		for inc_file_name in $(cat ${path} | grep "require" | awk -F"[/ ]" '{print $NF}')
+		do
+			inc_file_path="$(dirname ${path})/${inc_file_name}"
+			echo "" >> ${output_dir}/${inc_file_name}
+			echo "#### path: ${inc_file_path} ####" >> ${output_dir}/${inc_file_name}
+			echo "" >> ${output_dir}/${inc_file_name}
+			cat ${inc_file_path} >> ${output_dir}/${inc_file_name}
+		done
 
 		printf "\n"
 
