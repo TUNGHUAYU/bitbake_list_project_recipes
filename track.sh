@@ -226,14 +226,14 @@ function generate_finalized_recipe(){
 		layer_path=$(get_layer_path $path)
 		package_name=${path##*/}
 
-        printf "==========================================================\n"
-        printf "Layer  : %s \n" "${layer_name}"
-        printf "Recipe : %s \n" "${package_name}"
+		printf "==========================================================\n"
+		printf "Layer  : %s \n" "${layer_name}"
+		printf "Recipe : %s \n" "${package_name}"
 		printf "Path   : %s \n" "${path}"
-        printf "==========================================================\n\n"
+		printf "==========================================================\n\n"
 
 		cat ${path}
-
+		
 		# search the pattern "require aaa/bbb/ccc.inc" and then extract "ccc.inc"
 		for inc_file_name in $(cat ${path} | grep "require" | awk -F"[/ ]" '{print $NF}')
 		do
