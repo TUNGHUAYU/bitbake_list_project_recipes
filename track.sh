@@ -1,31 +1,58 @@
 #!/bin/bash
 
-# ========== << PATHs of OUTPUT FILES >> ==========
-# "$(pwd)/recipe_tracking/${codebase_name}_${build_name}_${package_name}"	: output folder.
-# "${output_dir}/${package_name}_bbpath.txt"								: record the bb files of package name.
-# "${output_dir}/${package_name}_bbappendpath.txt"							: record the bbapend files of package name.
-# "${output_dir}/${package_name}_environment.txt"							: record the environment variables of package name.
-# "${output_dir}/${package_name}_recipes_distribution.csv"					: list bb and bbappend paths with csv format.
-# "${output_dir}/${package_name}_bbsum.txt"									: record all content of bb and bbapend files.
-function DUMP_OUTPUT_FILES(){
-	echo "output files:"
-	printf "%s\n" "${output_dir}/${package_name}_bbpath.txt"
-	printf "%s\n" "${output_dir}/${package_name}_bbappendpath.txt"
-	printf "%s\n" "${output_dir}/${package_name}_environment.txt"
-	printf "%s\n" "${output_dir}/${package_name}_recipes_distribution.csv"
-	printf "%s\n" "${output_dir}/${package_name}_bbsum.txt"
+# ========== << Declare essential variables >> ==========
+SOFTWARE_COMPONENT="NONE"
+WORKDIR="NONE"
+SETUP_SCRIPT="NONE"
+CODEBASE_NAME="NONE"
+BUILD_NAME="NONE"
+OUTPUT_DIR="NONE"
+ENV_TXT="NONE"
+BBPATH_TXT="NONE"
+BBAPPEND_TXT="NONE"
+BBSUM_TXT="NONE"
+RECIPES_DISTRO_CSV="NONE"
+
+
+# ========== << Generate log >> ==========
+function generate_log(){
+
+	echo "Date: $(date)"
+	echo ""
+
+	echo "============================="
+	echo "CMD"
+	echo "$(basename ${0}) <sw component name> <build dir path> <setup script path>" 
+	echo "============================="
+
+	echo ""
+	echo "<sw component name>: ${SOFTWARE_COMPONENT}"
+	echo "<build dir path>:    ${WORKDIR}"
+	echo "<setup script path>: ${SETUP_SCRIPT}"
+	echo ""
+
+	echo "============================="
+	echo "OUTPUT FILES"
+	echo "============================="
+
+	echo ""
+	printf "%s\n" "${ENV_TXT}"
+	printf "%s\n" "${BBSUM_TXT}"
+	printf "%s\n" "${BBPATH_TXT}"
+	printf "%s\n" "${BBAPPEND_TXT}"
+	printf "%s\n" "${RECIPES_DISTRO_CSV}"
 }
 
 
 # ========== << HELP MESSAGE >> ==========
 
 function HELP(){
-	echo "usage: $(basename ${0}) <package name> <rdk build dir> <setup script path>" 
+	echo "usage: $(basename ${0}) <sw component name> <build dir path> <setup script path>" 
 	echo ""
 
-	printf "%-20s : %-30s %-30s\n" "<package name>" "package name" "(e.g. ccsp-wifi-agent)"
-	printf "%-20s : %-30s %-30s\n" "<rdk build dir>" "build directory path" "(e.g. \${workplace}/build-mt6890)"
-	printf "%-20s : %-30s %-30s\n" "<setup script path>" "setup-environment shell script" "(e.g. \${workplace}/meta-rdk/setup-environment)"
+	printf "%-20s : %-40s %-30s\n" "<sw component name>" "NAME of software component"        "(e.g. ccsp-wifi-agent)"
+	printf "%-20s : %-40s %-30s\n" "<rdk build dir>"     "PATH of build directory"           "(e.g. \${RDKB_CODEBASE}/build-mt6890)"
+	printf "%-20s : %-40s %-30s\n" "<setup script path>" "PATH of setup-environment script"  "(e.g. \${RDKB_CODEBASE}/meta-rdk/setup-environment)"
 }
 
 # ========== << functions >> ==========
@@ -54,11 +81,11 @@ function get_codebase_name(){
 
 function get_bb_path(){
 
-	# output the recipes location for the specific package to "${output_dir}/${package_name}_bbpath.txt"
-	bitbake-layers show-recipes -f ${package_name} > "${output_dir}/${package_name}_bbpath.txt"
+	# output the recipes location for the specific package to "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbpath.txt"
+	bitbake-layers show-recipes -f ${SOFTWARE_COMPONENT} > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbpath.txt"
 
-	# parse "${output_dir}/${package_name}_bbpath.txt" to get the bb file
-	cat "${output_dir}/${package_name}_bbpath.txt" | awk \
+	# parse "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbpath.txt" to get the bb file
+	cat "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbpath.txt" | awk \
 	'
 	{
 		if ( match($0, /Matching recipes:/) ){
@@ -90,9 +117,9 @@ function get_bb_path(){
 
 function get_bbappend_paths(){
 
-	bitbake-layers show-appends > "${output_dir}/${package_name}_bbappendpath.txt"
-	cat "${output_dir}/${package_name}_bbappendpath.txt" | awk \
-	--assign package_name=${package_name} \
+	bitbake-layers show-appends > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbappendpath.txt"
+	cat "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbappendpath.txt" | awk \
+	--assign package_name=${SOFTWARE_COMPONENT} \
 	'
 	BEGIN{
 		regex = ".*.bb:"
@@ -211,10 +238,10 @@ function generate_finalized_recipe(){
 		for inc_file_name in $(cat ${path} | grep "require" | awk -F"[/ ]" '{print $NF}')
 		do
 			inc_file_path="$(find ${layer_path} -name ${inc_file_name})"
-			echo ""                                 >> "${output_dir}/${layer_name}_${inc_file_name}"
-			echo "#### path: ${inc_file_path} ####" >> "${output_dir}/${layer_name}_${inc_file_name}"
-			echo ""                                 >> "${output_dir}/${layer_name}_${inc_file_name}"
-			cat ${inc_file_path}                    >> "${output_dir}/${layer_name}_${inc_file_name}"
+			echo ""                                 >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+			echo "#### path: ${inc_file_path} ####" >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+			echo ""                                 >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+			cat ${inc_file_path}                    >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
 		done
 
 		printf "\n"
@@ -230,52 +257,58 @@ if [[ $# != 3 ]];then
 	exit 1
 fi
 
-# assign value
-package_name=${1}
-work_dir=${2}
-setup_environment_path=${3}
-codebase_name=$(get_codebase_name ${work_dir})
-build_name=$(get_build_name ${work_dir})
-output_dir="$(pwd)/recipe_tracking/${codebase_name}_${build_name}_${package_name}"
+# define essential variables
+SOFTWARE_COMPONENT=${1}
+WORKDIR=${2}
+SETUP_SCRIPT=${3}
+
+CODEBASE_NAME=$(get_codebase_name ${WORKDIR})
+BUILD_NAME=$(get_build_name ${WORKDIR})
+OUTPUT_DIR="$(pwd)/recipe_tracking/${CODEBASE_NAME}_${BUILD_NAME}_${SOFTWARE_COMPONENT}"
+
+BBPATH_TXT="${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbpath.txt"
+BBAPPEND_TXT="${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbappendpath.txt"
+ENV_TXT="${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_environment.txt"
+RECIPES_DISTRO_CSV="${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_recipes_distribution.csv"
+BBSUM_TXT="${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbsum.txt"
+
 
 # create folder
-if [[ -d ${output_dir} ]]; then
-	read -p "overwrite ${output_dir}? (y/n)"
+if [[ -d ${OUTPUT_DIR} ]]; then
+	read -p "overwrite ${OUTPUT_DIR}? (y/n)"
 	if [[ ${REPLY} == "y" ]]; then
-		echo "rm ${output_dir} -rf"
-		rm ${output_dir} -rf
+		echo "rm ${OUTPUT_DIR} -rf"
+		rm ${OUTPUT_DIR} -rf
 	fi
 fi
-echo "mkdir -p ${output_dir}"
-mkdir -p ${output_dir}
+echo "mkdir -p ${OUTPUT_DIR}"
+mkdir -p ${OUTPUT_DIR}
 
 # move to work dir
-cd $(dirname ${work_dir})
+cd $(dirname ${WORKDIR})
 
 # setup oe environment
-source ${setup_environment_path} ${build_name}
+source ${SETUP_SCRIPT} ${BUILD_NAME}
 
 # get bb file and bbapend files
 bb_path=$(get_bb_path)
 bbappend_path=$(get_bbappend_paths)
 
-# get environment dump and output into the file "${output_dir}/${package_name}_environment.txt"
-bitbake -e ${package_name} > "${output_dir}/${package_name}_environment.txt"
-
-# Generate paths with bb file and bbapend files
+# collect all paths of bb/bbappend files into "paths"
 paths="${bb_path[@]} ${bbappend_path[@]}"
-echo "paths:"
-printf "%s\n" ${paths[@]}
+
+# get environment dump and output into the file "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_environment.txt"
+bitbake -e ${SOFTWARE_COMPONENT} > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_environment.txt"
 
 # Generate recipe list with csv format
 {
 	generate_recipe_list ${paths}
-} > "${output_dir}/${package_name}_recipes_distribution.csv"
+} > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_recipes_distribution.csv"
 
 # Generate sumary content of bb and bbapend files
 {
 	generate_finalized_recipe ${paths}
-} > "${output_dir}/${package_name}_bbsum.txt"
+} > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbsum.txt"
 
-# list all paths of output files
-DUMP_OUTPUT_FILES
+# generate log
+generate_log > ${OUTPUT_DIR}/log.txt
