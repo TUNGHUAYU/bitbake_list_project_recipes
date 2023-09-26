@@ -161,7 +161,7 @@ function get_layer_name(){
 	'
 	{
 		for(i=1; i<=NF; i++){
-			if ( match($i, /meta-.*/) ){
+			if ( match($i, /meta.*/) ){
 				layer_name = $i
 			}
 		}
@@ -186,7 +186,7 @@ function get_layer_path(){
 			if( length($i) != 0 ){
 				layer_path = layer_path"/"$i
 			}
-			if( match($i, /meta-.*/) ){
+			if( match($i, /meta.*/) ){
 				break;
 			}
 		}
@@ -233,7 +233,22 @@ function generate_finalized_recipe(){
 		printf "==========================================================\n\n"
 
 		cat ${path}
-		
+
+		printf "\n"
+
+	done
+}
+
+function collect_inc_files(){
+	local paths="$@"
+	local package_name
+
+	for path in ${paths}
+	do
+		layer_name=$(get_layer_name $path)
+		layer_path=$(get_layer_path $path)
+		package_name=${path##*/}
+
 		# search the pattern "require aaa/bbb/ccc.inc" and then extract "ccc.inc"
 		for inc_file_name in $(cat ${path} | grep "require" | awk -F"[/ ]" '{print $NF}')
 		do
@@ -243,9 +258,6 @@ function generate_finalized_recipe(){
 			echo ""                                 >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
 			cat ${inc_file_path}                    >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
 		done
-
-		printf "\n"
-
 	done
 }
 
@@ -297,9 +309,6 @@ bbappend_path=$(get_bbappend_paths)
 # collect all paths of bb/bbappend files into "paths"
 paths="${bb_path[@]} ${bbappend_path[@]}"
 
-# get environment dump and output into the file "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_environment.txt"
-bitbake -e ${SOFTWARE_COMPONENT} > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_environment.txt"
-
 # Generate recipe list with csv format
 {
 	generate_recipe_list ${paths}
@@ -309,6 +318,12 @@ bitbake -e ${SOFTWARE_COMPONENT} > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_environm
 {
 	generate_finalized_recipe ${paths}
 } > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbsum.txt"
+
+# get environment dump and output into the file "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_environment.txt"
+bitbake -e ${SOFTWARE_COMPONENT} > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_environment.txt"
+
+# collect include files
+collect_inc_files ${paths}
 
 # generate log
 generate_log > ${OUTPUT_DIR}/log.txt
