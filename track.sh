@@ -145,6 +145,31 @@ function get_layer_name(){
 	'
 }
 
+function get_layer_path(){
+
+	local recipe_path=$1
+	
+	echo ${recipe_path} | awk -F"/" \
+	'
+	BEGIN{
+		layer_path="";
+	}
+	{
+		for(i=1; i<=NF; i++){
+			if( length($i) != 0 ){
+				layer_path = layer_path"/"$i
+			}
+			if( match($i, /meta-.*/) ){
+				break;
+			}
+		}
+	}
+	END{
+		print layer_path
+	}
+	'
+}
+
 function generate_recipe_list(){
 
 	local paths="$@"
@@ -165,11 +190,13 @@ function generate_recipe_list(){
 function generate_finalized_recipe(){
 
 	local paths="$@"
+	local package_name
 
 	count=1
 	for path in ${paths}
 	do
 		layer_name=$(get_layer_name $path)
+		layer_path=$(get_layer_path $path)
 		package_name=${path##*/}
 
         printf "==========================================================\n"
@@ -180,13 +207,14 @@ function generate_finalized_recipe(){
 
 		cat ${path}
 
+		# search the pattern "require aaa/bbb/ccc.inc" and then extract "ccc.inc"
 		for inc_file_name in $(cat ${path} | grep "require" | awk -F"[/ ]" '{print $NF}')
 		do
-			inc_file_path="$(dirname ${path})/${inc_file_name}"
-			echo "" >> ${output_dir}/${inc_file_name}
-			echo "#### path: ${inc_file_path} ####" >> ${output_dir}/${inc_file_name}
-			echo "" >> ${output_dir}/${inc_file_name}
-			cat ${inc_file_path} >> ${output_dir}/${inc_file_name}
+			inc_file_path="$(find ${layer_path} -name ${inc_file_name})"
+			echo ""                                 >> "${output_dir}/${layer_name}_${inc_file_name}"
+			echo "#### path: ${inc_file_path} ####" >> "${output_dir}/${layer_name}_${inc_file_name}"
+			echo ""                                 >> "${output_dir}/${layer_name}_${inc_file_name}"
+			cat ${inc_file_path}                    >> "${output_dir}/${layer_name}_${inc_file_name}"
 		done
 
 		printf "\n"
