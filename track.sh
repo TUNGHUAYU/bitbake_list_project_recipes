@@ -242,6 +242,7 @@ function generate_finalized_recipe(){
 function collect_inc_files(){
 	local paths="$@"
 	local package_name
+	local inc_file_list
 
 	for path in ${paths}
 	do
@@ -249,14 +250,35 @@ function collect_inc_files(){
 		layer_path=$(get_layer_path $path)
 		package_name=${path##*/}
 
+		inc_file_list=$(
+			cat ${path} | 
+			grep "^require" | 
+			awk -F"[/, ]" \
+			'
+			{
+				for(i=1; i<=NF; i++){
+					if ( match($i, /.*\.inc/) ){
+						print $i
+					}
+				}
+			}
+			'
+		)
+
 		# search the pattern "require aaa/bbb/ccc.inc" and then extract "ccc.inc"
-		for inc_file_name in $(cat ${path} | grep "require" | awk -F"[/ ]" '{print $NF}')
+		for inc_file_name in ${inc_file_list}
 		do
 			inc_file_path="$(find ${layer_path} -name ${inc_file_name})"
-			echo ""                                 >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
-			echo "#### path: ${inc_file_path} ####" >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
-			echo ""                                 >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
-			cat ${inc_file_path}                    >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+			if [[ -n ${inc_file_path} ]]; then
+				echo ""                                 >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+				echo "#### path: ${inc_file_path} ####" >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+				echo ""                                 >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+				cat ${inc_file_path}                    >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+			else
+				echo ""                                 >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+				echo "#### path: UNKNOWN ####"          >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+				echo ""                                 >> "${OUTPUT_DIR}/${layer_name}_${inc_file_name}"
+			fi
 		done
 	done
 }
