@@ -326,7 +326,9 @@ source ${SETUP_SCRIPT} ${BUILD_NAME}
 
 # get bb file and bbapend files
 bb_path=$(get_bb_path)
+echo "get_bb_path ... ok"
 bbappend_path=$(get_bbappend_paths)
+echo "get_bbappend_paths ... ok"
 
 # collect all paths of bb/bbappend files into "paths"
 paths="${bb_path[@]} ${bbappend_path[@]}"
@@ -335,17 +337,22 @@ paths="${bb_path[@]} ${bbappend_path[@]}"
 {
 	generate_recipe_list ${paths}
 } > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_recipes_distribution.csv"
+echo "generate_recipe_list ... ok"
 
 # Generate sumary content of bb and bbapend files
 {
 	generate_finalized_recipe ${paths}
 } > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_bbsum.txt"
+echo "generate_finalized_recipe ... ok"
 
 # get environment dump and output into the file "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_environment.txt"
 bitbake -e ${SOFTWARE_COMPONENT} > "${OUTPUT_DIR}/${SOFTWARE_COMPONENT}_environment.txt"
+echo "get environment variables ... ok"
 
 # collect include files
 collect_inc_files ${paths}
+echo "get include files ... ok"
 
 # generate log
 generate_log > ${OUTPUT_DIR}/log.txt
+echo "generate log ... ok"
